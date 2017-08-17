@@ -1,84 +1,43 @@
-version: '2'
+version: '3.2'
 
 networks:
-  prodnetwork:
-    driver: bridge
+    prodnetwork:
+        driver: bridge
 
 volumes:
-  registry-stuff:
-    driver: local
+    nexus-data: {}
+    registry-stuff:
+        #Which driver to store 
+        driver: local
 
 services:
-  edmp-monitoring:
-    image: codecentric/edmp-monitoring
-    ports:
-      - "10001:8080"
-    networks:
-      - prodnetwork
-  kafka:
-    image: spotify/kafka
-    ports:
-      - "2181:2181"
-      - "9092:9092"
-      - "7209:7209"
-    environment:
-      JMX_PORT: 7209
-      ADVERTISED_HOST: 192.168.99.100
-      ADVERTISED_PORT: 9092
-    networks:
-      - prodnetwork
-  kafka-manager:
-    image: sheepkiller/kafka-manager
-    ports:
-      - "29000:9000"
-    environment:
-      ZK_HOSTS: zk:2181
-    networks:
-      - prodnetwork
-    links:
-      - kafka:zk
-    depends_on:
-      - kafka
+    registry:
+        image: registry:2
+        environment:
+            - STORAGE_PATH=/var/lib/registry
+#        volumes:
+#            - registry-stuff:/registry
+        ports:
+            - "5000:5000"
 
-  nexus:
-    image: codecentric/edmp-nexus:0.1
-    ports:
-      - "18081:8081"
+    nexus:
+        image: sonatype/nexus3
+        ports:
+            - "8081:8081"
+        environment:
+            - INSTALL4J_ADD_VM_PARAMS=-Xms500m -Xmx500m
+        volumes:
+            - "nexus-data:/nexus-data"
+    jenkins:
+        image: easyms-jenkins
+        ports:
+          - "8080:8080"
+        links:
+          - nexus:nexus
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /usr/local/bin/docker:/usr/bin/docker
+        #environment:
+        #  EDMP_CONFIG_URL: "https://raw.githubusercontent.com/codecentric/event-driven-microservices-platform-config/master/edmp-project-configuration.json"
 
-  jenkins:
-    image: codecentric/edmp-jenkins:0.1
-    ports:
-      - "18080:8080"
-    links:
-      - nexus:nexus
-      - sonar:sonar
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/local/bin/docker:/usr/bin/docker
-    environment:
-      EDMP_CONFIG_URL: "https://raw.githubusercontent.com/codecentric/event-driven-microservices-platform-config/master/edmp-project-configuration.json"
 
-  registry:
-    image: registry
-    environment:
-      - STORAGE_PATH=/registry
-    volumes:
-      - registry-stuff:/registry
-    ports:
-      - "5000:5000"
-
-  sonar:
-    image: codecentric/edmp-sonar:0.1
-    ports:
-     - "19000:9000"
-    environment:
-     - SONARQUBE_JDBC_URL=jdbc:postgresql://sonardb:5432/sonar
-    depends_on:
-      - sonardb
-  sonardb:
-    image: postgres
-    ports:
-     - "5432:5432"
-    environment:
-     - POSTGRES_USER=sonar
-     - POSTGRES_PASSWORD=sonar

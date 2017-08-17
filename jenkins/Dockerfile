@@ -1,6 +1,4 @@
-FROM jenkins:1.642.1
-
-MAINTAINER Marcel Birkner <marcel.birkner@codecentric.de>
+FROM jenkins:2.60.2
 
 USER root
 RUN apt-get update \
@@ -9,8 +7,8 @@ RUN apt-get update \
 RUN echo "jenkins ALL=NOPASSWD: ALL" >> /etc/sudoers
 USER jenkins
 
-COPY plugins.txt /var/jenkins_home/plugins.txt
-RUN /usr/local/bin/plugins.sh /var/jenkins_home/plugins.txt
+COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
+RUN /usr/local/bin/install-plugins.sh < /usr/share/jenkins/ref/plugins.txt
 
 # Adding default Jenkins Jobs
 COPY jobs/admin-edmp-seed-job.xml /usr/share/jenkins/ref/jobs/admin-edmp-seed-job/config.xml
